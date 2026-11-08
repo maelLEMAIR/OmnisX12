@@ -1,0 +1,112 @@
+{
+    "projects": {
+        "3FB72D41-7947-64B8-4B8E-147D16853A5D": {
+            "config-debug": {
+                "additionalDependencies": [],
+                "additionalIncludeDirectories": [],
+                "additionalLibraryDirectories": [],
+                "preprocessorDefinitions": []
+            },
+            "config-release": {
+                "additionalDependencies": [],
+                "additionalIncludeDirectories": [],
+                "additionalLibraryDirectories": [],
+                "preprocessorDefinitions": []
+            },
+            "dependencies": [
+                "50E62A43-5A60-3B9E-1095-7F4923517BFE"
+            ],
+            "dependents": [],
+            "name": "Sample",
+            "property-lib": false,
+            "property-pch": false,
+            "property-vcpkg": false,
+            "property-window": true
+        },
+        "50BC0872-4F36-75A7-04CC-37E2054410A4": {
+            "config-debug": {
+                "additionalDependencies": [],
+                "additionalIncludeDirectories": [],
+                "additionalLibraryDirectories": [],
+                "preprocessorDefinitions": []
+            },
+            "config-release": {
+                "additionalDependencies": [],
+                "additionalIncludeDirectories": [],
+                "additionalLibraryDirectories": [],
+                "preprocessorDefinitions": []
+            },
+            "dependencies": [
+                "50FA262D-7D11-6F9A-0255-5B516C443762"
+            ],
+            "dependents": [
+                "50E62A43-5A60-3B9E-1095-7F4923517BFE"
+            ],
+            "name": "Render",
+            "property-lib": true,
+            "property-pch": false,
+            "property-vcpkg": false,
+            "property-window": false
+        },
+        "50E62A43-5A60-3B9E-1095-7F4923517BFE": {
+            "config-debug": {
+                "additionalDependencies": [],
+                "additionalIncludeDirectories": [],
+                "additionalLibraryDirectories": [],
+                "preprocessorDefinitions": []
+            },
+            "config-release": {
+                "additionalDependencies": [],
+                "additionalIncludeDirectories": [],
+                "additionalLibraryDirectories": [],
+                "preprocessorDefinitions": []
+            },
+            "dependencies": [
+                "50BC0872-4F36-75A7-04CC-37E2054410A4",
+                "50FA262D-7D11-6F9A-0255-5B516C443762"
+            ],
+            "dependents": [
+                "3FB72D41-7947-64B8-4B8E-147D16853A5D"
+            ],
+            "name": "Engine",
+            "property-lib": true,
+            "property-pch": false,
+            "property-vcpkg": false,
+            "property-window": false
+        },
+        "50FA262D-7D11-6F9A-0255-5B516C443762": {
+            "config-debug": {
+                "additionalDependencies": [],
+                "additionalIncludeDirectories": [],
+                "additionalLibraryDirectories": [],
+                "preprocessorDefinitions": []
+            },
+            "config-release": {
+                "additionalDependencies": [],
+                "additionalIncludeDirectories": [],
+                "additionalLibraryDirectories": [],
+                "preprocessorDefinitions": []
+            },
+            "dependencies": [],
+            "dependents": [
+                "50E62A43-5A60-3B9E-1095-7F4923517BFE",
+                "50BC0872-4F36-75A7-04CC-37E2054410A4"
+            ],
+            "name": "Core",
+            "property-lib": true,
+            "property-pch": false,
+            "property-vcpkg": false,
+            "property-window": false
+        }
+    },
+    "projects_name_to_guid": {
+        "Core": "50FA262D-7D11-6F9A-0255-5B516C443762",
+        "Engine": "50E62A43-5A60-3B9E-1095-7F4923517BFE",
+        "Render": "50BC0872-4F36-75A7-04CC-37E2054410A4",
+        "Sample": "3FB72D41-7947-64B8-4B8E-147D16853A5D"
+    },
+    "solution_guid": "4FF83149-744B-6DD0-1351-1F8E2BC83EB9",
+    "solution_name": "OmnisX12",
+    "startup_project": "",
+    "version": "2.0"
+}
