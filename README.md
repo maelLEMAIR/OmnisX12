@@ -1,2 +1,2 @@
-# ObjLoader
+# OmnisX12
 
