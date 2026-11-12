@@ -14,9 +14,9 @@ public:
     void Resize(UINT width, UINT height);
     void Present();
 
-    ID3D12Resource*             CurrentBackBuffer()     const { return m_buffers[m_currBackBuffer].Get(); }
-    D3D12_CPU_DESCRIPTOR_HANDLE CurrentBackBufferView() const;
-    DXGI_FORMAT                 Format()                const { return m_backBufferFormat; }
+    ID3D12Resource*                 CurrentBackBuffer()     const { return m_buffers[m_currBackBuffer].Get(); }
+    D3D12_CPU_DESCRIPTOR_HANDLE     CurrentBackBufferView() const;
+    DXGI_FORMAT                     Format()                const { return m_backBufferFormat; }
 
 private:
     void CreateBuffersAndViews();

@@ -15,12 +15,21 @@ public:
     void Init(GpuDevice& gpuDevice);
 
     void ResetList(ID3D12PipelineState* pso = nullptr);
+    void ResetListWithAllocator(ID3D12CommandAllocator* allocator, ID3D12PipelineState* pso = nullptr);
     void ExecuteList();
-    void FlushCommandQueue();
+
+    
+    UINT64 Signal();                             
+    UINT64 GetCompletedValue() const;            
+    bool   IsFenceComplete(UINT64 value) const;
+    void   WaitForFenceValue(UINT64 value);    
+    void   FlushCommandQueue();                  
 
     ID3D12CommandQueue*        GetQueue()       const { return m_commandQueue.Get(); }
     ID3D12GraphicsCommandList* GetCommandList() const { return m_commandList.Get(); }
 
+    UINT64 Report() { return 64; }
+    
 private:
     ComPtr<ID3D12Fence> m_fence;
     UINT64 m_currentFence = 0;

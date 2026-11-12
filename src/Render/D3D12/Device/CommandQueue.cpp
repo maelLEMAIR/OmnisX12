@@ -37,23 +37,48 @@ void CommandQueue::ResetList(ID3D12PipelineState* pso)
     ThrowIfFailed(m_commandList->Reset(m_directCmdListAlloc.Get(), pso));
 }
 
+void CommandQueue::ResetListWithAllocator(ID3D12CommandAllocator* allocator, ID3D12PipelineState* pso)
+{
+    ThrowIfFailed(allocator->Reset());
+    ThrowIfFailed(m_commandList->Reset(allocator, pso));
+}
+
+UINT64 CommandQueue::Signal()
+{
+    ++m_currentFence;
+    ThrowIfFailed(m_commandQueue->Signal(m_fence.Get(), m_currentFence));
+    return m_currentFence;
+}
+
+UINT64 CommandQueue::GetCompletedValue() const
+{
+    return m_fence->GetCompletedValue();
+}
+
+bool CommandQueue::IsFenceComplete(UINT64 value) const
+{
+    return m_fence->GetCompletedValue() >= value;
+}
+
+void CommandQueue::WaitForFenceValue(UINT64 value)
+{
+    if (IsFenceComplete(value))
+        return;
+
+    ThrowIfFailed(m_fence->SetEventOnCompletion(value, m_fenceEvent));
+    WaitForSingleObject(m_fenceEvent, INFINITE);
+}
+
+void CommandQueue::FlushCommandQueue()
+{
+    WaitForFenceValue(Signal());
+}
+
 void CommandQueue::ExecuteList()
 {
     ThrowIfFailed(m_commandList->Close());
     ID3D12CommandList* lists[] = { m_commandList.Get() };
     m_commandQueue->ExecuteCommandLists(_countof(lists), lists);
-}
-
-void CommandQueue::FlushCommandQueue()
-{
-    m_currentFence++;
-    ThrowIfFailed(m_commandQueue->Signal(m_fence.Get(), m_currentFence));
-
-    if (m_fence->GetCompletedValue() < m_currentFence)
-    {
-        ThrowIfFailed(m_fence->SetEventOnCompletion(m_currentFence, m_fenceEvent));
-        WaitForSingleObject(m_fenceEvent, INFINITE);
-    }
 }
 
 #endif

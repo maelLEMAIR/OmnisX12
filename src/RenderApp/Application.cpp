@@ -29,7 +29,7 @@ int Application::Run()
         }
 
         const float dt = m_chrono.DeltaTime();
-        m_renderer.Update(dt);
+        m_renderer.Update(m_chrono);
         m_renderer.Draw();
         UpdateFpsInTitle(dt);
     }

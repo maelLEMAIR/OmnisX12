@@ -68,7 +68,7 @@ namespace MathUtils
     // SCALAIRE
     // =========================================================================
  
-    inline float Clamp(float v, float lo, float hi)   { return max(lo, min(v, hi)); }
+    inline float Clamp(float v, float lo, float hi)   { return DirectX::XMMax(lo, DirectX::XMMin(v, hi)); }
     inline float Lerp(float a, float b, float t)      { return a + t * (b - a); }
     inline float SmoothStep(float a, float b, float t)
     {
