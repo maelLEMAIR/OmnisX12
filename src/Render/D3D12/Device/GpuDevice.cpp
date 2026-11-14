@@ -3,7 +3,7 @@
 
 #include "GpuDevice.h"
 
-void GpuDevice::Init()
+bool GpuDevice::Init()
 {
 #if defined(DEBUG) || defined(_DEBUG)
     {
@@ -24,11 +24,13 @@ void GpuDevice::Init()
         ThrowIfFailed(m_factory->EnumWarpAdapter(IID_PPV_ARGS(&warpAdapter)));
         ThrowIfFailed(D3D12CreateDevice(
             warpAdapter.Get(), D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(&m_device)));
+        return false;
     }
 
     m_rtvDescriptorSize       = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
     m_dsvDescriptorSize       = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
     m_cbvSrvUavDescriptorSize = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+    return true;
 }
 
 #endif

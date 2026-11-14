@@ -2,7 +2,7 @@
 #define COMMAND_QUEUE_H_INCLUDED
 
 #include "GpuDevice.h"
-#include "../Ressources/d3d12Utils.h"
+#include "../Resources/d3d12Utils.h"
 
 class CommandQueue
 {

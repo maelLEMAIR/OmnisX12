@@ -2,8 +2,8 @@
 #define FRAME_RESOURCE_H_INCLUDED
 
 #include "Core/MathUtils.hpp"
-#include "../Ressources/d3d12Utils.h"
-#include "../Ressources/UploadBuffer.h"
+#include "../Resources/d3d12Utils.h"
+#include "../Resources/UploadBuffer.h"
 
 struct ObjectConstants
 {

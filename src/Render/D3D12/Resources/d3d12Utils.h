@@ -91,17 +91,6 @@ inline std::wstring AnsiToWString(const std::string& str)
     return std::wstring(buffer);
 }
 
-inline const std::wstring GetResPath()
-{
-    WCHAR exePath[MAX_PATH];
-    GetModuleFileNameW(nullptr, exePath, MAX_PATH);
-    std::wstring path(exePath);
-    size_t lastSlash = path.find_last_of(L"\\/");
-    path = path.substr(0, lastSlash + 1);
-    path += L"../../../../res/";
-    return path;
-}
-
 #ifndef ThrowIfFailed
 #define ThrowIfFailed(x)                                              \
 {                                                                     \

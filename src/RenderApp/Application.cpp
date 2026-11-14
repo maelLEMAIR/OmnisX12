@@ -6,7 +6,7 @@
 #include <string>
 
 Application::Application(HINSTANCE instance)
-    : m_window(instance, L"OmnisX12", 1280, 720)
+    : m_window(L"OmnisX12", 1280, 720)
 {
     if (!m_window.Create())
         throw std::runtime_error("Window creation failed");
@@ -30,7 +30,10 @@ int Application::Run()
 
         const float dt = m_chrono.DeltaTime();
         m_renderer.Update(m_chrono);
-        m_renderer.Draw();
+        
+        m_renderer.BeginDraw();
+        // m_renderer.Draw();
+        m_renderer.EndDraw();
         UpdateFpsInTitle(dt);
     }
     return 0;

@@ -1,12 +1,12 @@
 ﻿#ifndef GPU_DEVICE_H_INCLUDED
 #define GPU_DEVICE_H_INCLUDED
 
-#include "../Ressources/d3d12Utils.h"
+#include "../Resources/d3d12Utils.h"
 
 class GpuDevice
 {
 public:
-    void Init();
+    bool Init();
     
     ComPtr<ID3D12Device>& GetGpuDevice() { return m_device; }
     ComPtr<IDXGIFactory4>& GetFactory()  { return m_factory; }
@@ -18,6 +18,7 @@ public:
 protected:
     
 private:
+    
     ComPtr<ID3D12Device>  m_device;
     ComPtr<IDXGIFactory4> m_factory;
     

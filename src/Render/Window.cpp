@@ -3,8 +3,8 @@
 
 #include "Window.h"
 
-Window::Window(HINSTANCE instance, const std::wstring& title, int clientWidth, int clientHeight)
-    : m_instance(instance), m_title(title), m_width(clientWidth), m_height(clientHeight)
+Window::Window(const std::wstring& title, int clientWidth, int clientHeight)
+    : m_instance(GetModuleHandle(nullptr)), m_title(title), m_width(clientWidth), m_height(clientHeight)
 {
 }
 
@@ -32,12 +32,14 @@ bool Window::Create()
     }
 
     // On veut une zone CLIENT de la taille demandée : on ajoute bordures et barre de titre.
-    RECT rect = { 0, 0, m_width, m_height };
-    AdjustWindowRect(&rect, WS_OVERLAPPEDWINDOW, FALSE);
+    m_windowedRect = {0, 0, m_width, m_height};
+    AdjustWindowRect(&m_windowedRect, WS_OVERLAPPEDWINDOW, FALSE);
 
     // "this" est passé à CreateWindow et récupéré dans WM_NCCREATE.
     m_hwnd = CreateWindow(L"OmnisX12Window", m_title.c_str(), WS_OVERLAPPEDWINDOW,
-        CW_USEDEFAULT, CW_USEDEFAULT, rect.right - rect.left, rect.bottom - rect.top,
+        CW_USEDEFAULT, CW_USEDEFAULT, 
+        m_windowedRect.right - m_windowedRect.left, 
+        m_windowedRect.bottom - m_windowedRect.top,
         nullptr, nullptr, m_instance, this);
 
     if (!m_hwnd)
@@ -48,7 +50,53 @@ bool Window::Create()
 
     ShowWindow(m_hwnd, SW_SHOW);
     UpdateWindow(m_hwnd);
+    
+    m_isOpen = true;
     return true;
+}
+
+bool Window::InitD3D12()
+{
+    Create();
+    
+    GpuDevice* device = new GpuDevice();
+    
+    if (device->Init() == false)
+        return false;
+    
+    m_pDevice = device;
+    Renderer* renderer = new Renderer();
+    renderer->Init(m_hwnd, m_width, m_height);
+
+    m_isOpen = true;
+    
+    return true;
+}
+
+void Window::ToggleFullScreen()
+{
+    m_isFullScreen = !m_isFullScreen;
+
+    if (m_isFullScreen)
+    {
+        GetWindowRect(m_hwnd, &m_windowedRect);
+
+        SetWindowLong(m_hwnd, GWL_STYLE, WS_POPUP | WS_VISIBLE);
+        SetWindowPos(m_hwnd, HWND_TOP, 0, 0,
+            GetSystemMetrics(SM_CXSCREEN),
+            GetSystemMetrics(SM_CYSCREEN),
+            SWP_FRAMECHANGED);
+    }
+    else
+    {
+        SetWindowLong(m_hwnd, GWL_STYLE, WS_OVERLAPPEDWINDOW);
+        SetWindowPos(m_hwnd, nullptr,
+            m_windowedRect.left, m_windowedRect.top,
+            m_windowedRect.right  - m_windowedRect.left,
+            m_windowedRect.bottom - m_windowedRect.top,
+            SWP_FRAMECHANGED);
+        ShowWindow(m_hwnd, SW_RESTORE);
+    }
 }
 
 bool Window::PumpMessages()
@@ -113,6 +161,7 @@ LRESULT Window::HandleMessage(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
         return 0;
 
     case WM_DESTROY:
+        m_isOpen = false;
         PostQuitMessage(0);
         return 0;
 

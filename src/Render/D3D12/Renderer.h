@@ -2,6 +2,8 @@
 #define RENDERER_H_INCLUDED
 
 #include <windows.h>
+
+#include "Camera.h"
 #include "Core/MathUtils.hpp"
 #include "Core/Chrono.h"
 
@@ -31,27 +33,33 @@ public:
     ~Renderer();
 
     void Init(HWND hwnd, int width, int height);
-    void BuildBoxGeometry();
-    void BuildFrameResources();
-    void BuildRootSignature();
-    void BuildShadersAndInputLayout();
     void OnResize(int width, int height);
-    void Update(Chrono const& chrono);
-    void UpdateObjectCBs(Chrono const& chrono);
-    void UpdateMainPassCB(Chrono const& chrono);
-    void Draw();
     
-    void AddRenderItem(RenderItem& renderItem) { renderItem.NumFramesDirty = NumFrameResources ;mAllRItems.push_back(renderItem); }
+    void Update(Chrono const& chrono);
+    
+    void BeginDraw();
+    MeshGeometry* GetOrCreateGeometry(uint32_t geoId, Geometry& geo);
+    void Draw(MeshGeometry& geo, const XMFLOAT4X4& world, const XMFLOAT4& color);
+    void EndDraw();
+    
+    GpuDevice& GetGpuDevice() { return m_device; }
+    void SetClearColor(XMFLOAT3 clearColor) { m_clearColor = { { { clearColor.x, clearColor.y, clearColor.z, 1.0f } } }; }
+    void SetMainCamera(Camera* cam) { m_mainCamera = *cam; }
+
 private:
     D3D12_CPU_DESCRIPTOR_HANDLE DepthStencilView() const;
 
 private:
-    void BeginDraw();
-    void DrawScene();
-    void EndDraw();
-    void BuildRenderObjects();
+    void UpdateObjectCBs(Chrono const& chrono);
+    void UpdateMainPassCB(Chrono const& chrono);
+    
+    void BuildRootSignature();
+    void BuildFrameResources();
+    void BuildShadersAndInputLayout();
     void BuildPSO();
 
+    XMVECTORF32 m_clearColor = Colors::BlueViolet;
+    
     ComPtr<ID3D12RootSignature>  m_rootSignature = nullptr;
     
     ComPtr<ID3DBlob> m_vsByteCode = nullptr;
@@ -60,22 +68,27 @@ private:
     GpuDevice    m_device;
     CommandQueue m_commandQueue;
     SwapChain    m_swapChain;
-
-    std::unique_ptr<MeshGeometry>                  m_boxGeo;
     
     static const int NumFrameResources = 3;
     std::vector<std::unique_ptr<FrameResource>> mFrameResources;
     FrameResource* mCurrFrameResource = nullptr;
     int mCurrFrameResourceIndex = 0;
     
-    HWND m_hwnd = nullptr;
+    static constexpr UINT kMaxObjects = 4096; 
+    UINT m_drawCount = 0;
+
+    std::unordered_map<uint32_t, std::unique_ptr<MeshGeometry>> m_geometries;
+
+    struct PendingUpload { MeshGeometry* geo; UINT64 fence; };
+    std::vector<MeshGeometry*> m_newGeometries;
+    std::vector<PendingUpload> m_pendingUploads;
+    
+    
     PassConstants mMainPassCB;
     XMFLOAT3 mEyePos = XMFLOAT3(0.0f, 0.0f, 0.0f);
     
     std::vector<D3D12_INPUT_ELEMENT_DESC> mInputLayout;
     std::unordered_map<std::string, ComPtr<ID3D12PipelineState>> mPSOs;
-    
-    std::vector<RenderItem> mAllRItems;
     
     ComPtr<ID3D12DescriptorHeap> m_dsvHeap;
     ComPtr<ID3D12Resource>       m_depthStencilBuffer;
@@ -86,6 +99,8 @@ private:
     int m_clientWidth  = 800;
     int m_clientHeight = 600;
 
+    Camera m_mainCamera;
+    
     DirectX::XMFLOAT4X4 mView  = MathUtils::Identity4x4();
     DirectX::XMFLOAT4X4 mProj  = MathUtils::Identity4x4();
 };

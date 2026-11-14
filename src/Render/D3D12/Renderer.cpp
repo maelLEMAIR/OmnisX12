@@ -2,6 +2,7 @@
 #define RENDERER_CPP_INCLUDED
 
 #include "Renderer.h"
+#include "Core/define.h"
 
 Renderer::~Renderer()
 {
@@ -13,7 +14,6 @@ void Renderer::Init(HWND hwnd, int width, int height)
 {
     m_clientWidth  = width;
     m_clientHeight = height;
-    m_hwnd = hwnd;
 
     m_device.Init();
     m_commandQueue.Init(m_device);
@@ -29,69 +29,14 @@ void Renderer::Init(HWND hwnd, int width, int height)
     OnResize(width, height);       
 
     m_commandQueue.ResetList();      
-
+    
     BuildRootSignature();
-    BuildShadersAndInputLayout();
-    BuildBoxGeometry();
-    BuildRenderObjects();           
-    BuildFrameResources();                 
+    BuildFrameResources(); 
+    BuildShadersAndInputLayout();             
     BuildPSO();
 
     m_commandQueue.ExecuteList();
     m_commandQueue.FlushCommandQueue();
-
-    m_boxGeo->DisposeUploaders();         
-}
-
-void Renderer::BuildBoxGeometry()
-{
-    // Unit cube centred at origin, vertex colors unused (overridden by CB)
-    std::vector<Vertex> verts =
-    {
-        // Bottom face (y = -0.5)
-        { {-0.5f, -0.5f, -0.5f}, {} }, { {-0.5f, -0.5f,  0.5f}, {} },
-        { { 0.5f, -0.5f, -0.5f}, {} }, { { 0.5f, -0.5f,  0.5f}, {} },
-        // Top face    (y = +0.5)
-        { {-0.5f,  0.5f, -0.5f}, {} }, { {-0.5f,  0.5f,  0.5f}, {} },
-        { { 0.5f,  0.5f, -0.5f}, {} }, { { 0.5f,  0.5f,  0.5f}, {} },
-    };
-
-    std::vector<uint16_t> idx =
-    {
-        0,2,1,  3,1,2,  // bottom
-        4,5,6,  7,6,5,  // top
-        0,1,4,  1,5,4,  // left
-        2,6,3,  3,6,7,  // right
-        0,4,6,  0,6,2,  // front
-        1,7,5,  1,3,7,  // back
-    };
-
-    const UINT vbSize = (UINT)verts.size() * sizeof(Vertex);
-    const UINT ibSize = (UINT)idx.size()   * sizeof(uint16_t);
-
-    m_boxGeo = std::make_unique<MeshGeometry>();
-    m_boxGeo->Name = "boxGeo";
-
-    ThrowIfFailed(D3DCreateBlob(vbSize, &m_boxGeo->VertexBufferCPU));
-    CopyMemory(m_boxGeo->VertexBufferCPU->GetBufferPointer(), verts.data(), vbSize);
-    ThrowIfFailed(D3DCreateBlob(ibSize, &m_boxGeo->IndexBufferCPU));
-    CopyMemory(m_boxGeo->IndexBufferCPU->GetBufferPointer(), idx.data(), ibSize);
-
-    m_boxGeo->VertexBufferGPU = d3dUtil::CreateDefaultBuffer(
-        m_device.GetGpuDevice().Get(), m_commandQueue.GetCommandList(), verts.data(), vbSize, m_boxGeo->VertexBufferUploader);
-    m_boxGeo->IndexBufferGPU = d3dUtil::CreateDefaultBuffer(
-        m_device.GetGpuDevice().Get(), m_commandQueue.GetCommandList(), idx.data(), ibSize, m_boxGeo->IndexBufferUploader);
-
-    m_boxGeo->VertexByteStride     = sizeof(Vertex);
-    m_boxGeo->VertexBufferByteSize = vbSize;
-    m_boxGeo->IndexFormat          = DXGI_FORMAT_R16_UINT;
-    m_boxGeo->IndexBufferByteSize  = ibSize;
-
-    SubmeshGeometry sub;
-    sub.IndexCount         = (UINT)idx.size();
-    sub.StartIndexLocation = 0;
-    sub.BaseVertexLocation = 0;
-    m_boxGeo->DrawArgs["box"] = sub;
 }
 
 void Renderer::BuildFrameResources()
@@ -99,7 +44,7 @@ void Renderer::BuildFrameResources()
     for(int i = 0; i < NumFrameResources; ++i)
     {
         mFrameResources.push_back(std::make_unique<FrameResource>(
-        m_device.GetGpuDevice().Get(), 1, (UINT)mAllRItems.size()));
+        m_device.GetGpuDevice().Get(), 1, kMaxObjects));
     }
     mCurrFrameResource = mFrameResources[0].get();
 }
@@ -132,7 +77,10 @@ void Renderer::BuildShadersAndInputLayout()
     mInputLayout =
     {
         { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT,    0,  0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-        { "COLOR",    0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+        { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT,       0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+        { "NORMAL",   0, DXGI_FORMAT_R32G32B32_FLOAT,    0, 20, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+        { "TANGENT",  0, DXGI_FORMAT_R32G32B32_FLOAT,    0, 32, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+        { "COLOR",    0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 44, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
     };
 }
 
@@ -197,9 +145,6 @@ void Renderer::Update(Chrono const& chrono)
 {
     mCurrFrameResourceIndex = (mCurrFrameResourceIndex + 1) % NumFrameResources;
     mCurrFrameResource = mFrameResources[mCurrFrameResourceIndex].get();
-
-    mAllRItems[1].RotationY += chrono.DeltaTime();
-    mAllRItems[1].NumFramesDirty = NumFrameResources;
     
     if (mCurrFrameResource->Fence != 0)
         m_commandQueue.WaitForFenceValue(mCurrFrameResource->Fence);
@@ -217,19 +162,6 @@ void Renderer::Update(Chrono const& chrono)
 void Renderer::UpdateObjectCBs(Chrono const& chrono)
 {
     auto currObjectCB = mCurrFrameResource->ObjectCB.get();
-    for (auto& e : mAllRItems)
-    {
-        if (e.NumFramesDirty > 0)
-        {
-            XMMATRIX world = e.WorldMatrix();
-            ObjectConstants objConstants;
-            XMStoreFloat4x4(&objConstants.World, XMMatrixTranspose(world));
-            objConstants.Color = e.Color;                               
-            currObjectCB->CopyData(e.ObjCBIndex, objConstants);
-            
-            e.NumFramesDirty--;
-        }
-    }
 }
 
 void Renderer::UpdateMainPassCB(Chrono const& chrono)
@@ -264,15 +196,48 @@ void Renderer::UpdateMainPassCB(Chrono const& chrono)
     currPassCB->CopyData(0, mMainPassCB);
 }
 
-void Renderer::Draw()
+void Renderer::Draw(MeshGeometry& geo, const XMFLOAT4X4& world, const XMFLOAT4& color)
 {
-    BeginDraw();
-    DrawScene();
-    EndDraw();
+    if (m_drawCount >= kMaxObjects)
+        return;
+
+    ObjectConstants constants;
+    XMStoreFloat4x4(&constants.World, XMMatrixTranspose(XMLoadFloat4x4(&world)));
+    constants.Color = color;
+    mCurrFrameResource->ObjectCB->CopyData(m_drawCount, constants);
+
+    ID3D12GraphicsCommandList* cmd = m_commandQueue.GetCommandList();
+
+    D3D12_VERTEX_BUFFER_VIEW vbv = geo.VertexBufferView();
+    D3D12_INDEX_BUFFER_VIEW  ibv = geo.IndexBufferView();
+    cmd->IASetVertexBuffers(0, 1, &vbv);
+    cmd->IASetIndexBuffer(&ibv);
+    cmd->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+    const UINT stride = d3dUtil::CalcConstantBufferByteSize(sizeof(ObjectConstants));
+    cmd->SetGraphicsRootConstantBufferView(0,
+        mCurrFrameResource->ObjectCB->Resource()->GetGPUVirtualAddress() + (UINT64)m_drawCount * stride);
+
+    cmd->DrawIndexedInstanced(geo.IndexCount, 1, 0, 0, 0);
+    ++m_drawCount;
 }
 
 void Renderer::BeginDraw()
 {
+    m_drawCount = 0;
+
+    for (size_t i = 0; i < m_pendingUploads.size(); )
+    {
+        if (m_commandQueue.IsFenceComplete(m_pendingUploads[i].fence))
+        {
+            m_pendingUploads[i].geo->DisposeUploaders();
+            m_pendingUploads[i] = m_pendingUploads.back();
+            m_pendingUploads.pop_back();
+        }
+        else
+            ++i;
+    }
+    
     m_commandQueue.ResetListWithAllocator(mCurrFrameResource->CmdListAlloc.Get(), mPSOs["opaque"].Get());
 
     m_commandQueue.GetCommandList()->RSSetViewports(1, &m_screenViewport);
@@ -282,41 +247,19 @@ void Renderer::BeginDraw()
         D3D12_RESOURCE_STATE_RENDER_TARGET);
     m_commandQueue.GetCommandList()->ResourceBarrier(1, &barrier);
 
-    m_commandQueue.GetCommandList()->ClearRenderTargetView(m_swapChain.CurrentBackBufferView(), Colors::LightSteelBlue, 0, nullptr);
+    m_commandQueue.GetCommandList()->ClearRenderTargetView(m_swapChain.CurrentBackBufferView(), m_clearColor, 0, nullptr);
     m_commandQueue.GetCommandList()->ClearDepthStencilView(DepthStencilView(),
         D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.f, 0, 0, nullptr);
     D3D12_CPU_DESCRIPTOR_HANDLE currentBackBufferView = m_swapChain.CurrentBackBufferView();
     D3D12_CPU_DESCRIPTOR_HANDLE depthStencilView = DepthStencilView();
     m_commandQueue.GetCommandList()->OMSetRenderTargets(1, &currentBackBufferView, true, &depthStencilView);
-}
 
-void Renderer::DrawScene()
-{
     ID3D12GraphicsCommandList* cmd = m_commandQueue.GetCommandList();
 
     cmd->SetGraphicsRootSignature(m_rootSignature.Get());
 
     cmd->SetGraphicsRootConstantBufferView(1,
         mCurrFrameResource->PassCB->Resource()->GetGPUVirtualAddress());
-
-    D3D12_VERTEX_BUFFER_VIEW vbv = m_boxGeo->VertexBufferView();
-    D3D12_INDEX_BUFFER_VIEW  ibv = m_boxGeo->IndexBufferView();
-    cmd->IASetVertexBuffers(0, 1, &vbv);
-    cmd->IASetIndexBuffer(&ibv);
-    cmd->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
-    const UINT objCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(ObjectConstants));
-    const D3D12_GPU_VIRTUAL_ADDRESS objCBBase =
-        mCurrFrameResource->ObjectCB->Resource()->GetGPUVirtualAddress();
-
-    for (const RenderItem& item : mAllRItems)
-    {
-        cmd->SetGraphicsRootConstantBufferView(0,
-            objCBBase + (UINT64)item.ObjCBIndex * objCBByteSize);
-
-        cmd->DrawIndexedInstanced(item.IndexCount, 1,
-            item.StartIndexLocation, item.BaseVertexLocation, 0);
-    }
 }
 
 void Renderer::EndDraw()
@@ -330,31 +273,10 @@ void Renderer::EndDraw()
     m_swapChain.Present();
 
     mCurrFrameResource->Fence = m_commandQueue.Signal();
-}
-
-void Renderer::BuildRenderObjects()
-{
-    const SubmeshGeometry& box = m_boxGeo->DrawArgs["box"];
-
-    mAllRItems.reserve(kNumBoxes);
-    for (int i = 0; i < kNumBoxes; ++i)
-    {
-        const BoxDesc& d = kBoxDescs[i];
-
-        RenderItem item;
-        item.Position  = d.pos;
-        item.Scale     = d.scale;
-        item.RotationY = d.rotY;
-        item.Color     = d.color;
-
-        item.ObjCBIndex         = i;
-        item.Geo                = m_boxGeo.get();
-        item.IndexCount         = box.IndexCount;
-        item.StartIndexLocation = box.StartIndexLocation;
-        item.BaseVertexLocation = box.BaseVertexLocation;
-
-        AddRenderItem(item);         
-    }
+    
+    for (MeshGeometry* g : m_newGeometries)
+        m_pendingUploads.push_back({ g, mCurrFrameResource->Fence });
+    m_newGeometries.clear();
 }
 
 void Renderer::BuildPSO()
@@ -381,6 +303,39 @@ void Renderer::BuildPSO()
 D3D12_CPU_DESCRIPTOR_HANDLE Renderer::DepthStencilView() const
 {
     return m_dsvHeap->GetCPUDescriptorHandleForHeapStart();
+}
+
+MeshGeometry* Renderer::GetOrCreateGeometry(uint32 geoId, Geometry& geo)
+{
+    auto it = m_geometries.find(geoId);
+    if (it != m_geometries.end())
+        return it->second.get();
+
+    if (geo.vertices.empty() || geo.indices.empty())
+        return nullptr;
+
+    const UINT vbSize = (UINT)(geo.vertices.size() * sizeof(Vertex));
+    const UINT ibSize = (UINT)(geo.indices.size()  * sizeof(uint32_t));
+
+    auto mesh = std::make_unique<MeshGeometry>();
+
+    mesh->VertexBufferGPU = d3dUtil::CreateDefaultBuffer(
+        m_device.GetGpuDevice().Get(), m_commandQueue.GetCommandList(),
+        geo.vertices.data(), vbSize, mesh->VertexBufferUploader);
+    mesh->IndexBufferGPU = d3dUtil::CreateDefaultBuffer(
+        m_device.GetGpuDevice().Get(), m_commandQueue.GetCommandList(),
+        geo.indices.data(), ibSize, mesh->IndexBufferUploader);
+
+    mesh->VertexByteStride     = sizeof(Vertex);
+    mesh->VertexBufferByteSize = vbSize;
+    mesh->IndexFormat          = DXGI_FORMAT_R32_UINT;
+    mesh->IndexBufferByteSize  = ibSize;
+    mesh->IndexCount           = (UINT)geo.indices.size();
+
+    MeshGeometry* raw = mesh.get();
+    m_geometries[geoId] = std::move(mesh);
+    m_newGeometries.push_back(raw);
+    return raw;
 }
 
 #endif
