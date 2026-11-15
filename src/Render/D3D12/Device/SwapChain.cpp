@@ -21,8 +21,8 @@ void SwapChain::Init(GpuDevice& gpuDevice, CommandQueue& queue, HWND hwnd, UINT 
     sd.BufferDesc.Format           = m_backBufferFormat;
     sd.BufferDesc.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
     sd.BufferDesc.Scaling          = DXGI_MODE_SCALING_UNSPECIFIED;
-    sd.SampleDesc.Count   = 1;
-    sd.SampleDesc.Quality = 0;
+    sd.SampleDesc.Count   = m_4xMsaaState ? 4 : 1;
+    sd.SampleDesc.Quality = m_4xMsaaState ? (m_4xMsaaQuality - 1) : 0;
     sd.BufferUsage  = DXGI_USAGE_RENDER_TARGET_OUTPUT;
     sd.BufferCount  = BufferCount;
     sd.OutputWindow = hwnd;

@@ -30,6 +30,8 @@
 using namespace Microsoft::WRL;
 using namespace DirectX;
 
+static const int NumFrameResources = 3;
+
 class DxException
 {
 public:

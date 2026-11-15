@@ -13,6 +13,7 @@
 #include "Device/SwapChain.h"
 
 #include "DirectX12/d3dx12.h"
+#include "Items/Material.h"
 #include "Items/RenderItem.h"
 
 struct BoxDesc { XMFLOAT3 pos; XMFLOAT3 scale; float rotY; XMFLOAT4 color; };
@@ -58,12 +59,14 @@ public:
 private:
     D3D12_CPU_DESCRIPTOR_HANDLE DepthStencilView() const;
 
-private:
     void UpdateMainPassCB(Chrono const& chrono);
-    
+    void UpdateMaterialCBs(const Chrono& gt);
+
     void BuildRootSignature();
     void BuildFrameResources();
     void BuildShadersAndInputLayout();
+    
+private:
     
     XMVECTORF32 m_clearColor = Colors::BlueViolet;
     
@@ -80,7 +83,6 @@ private:
     CommandQueue m_commandQueue;
     SwapChain    m_swapChain;
     
-    static const int NumFrameResources = 3;
     std::vector<std::unique_ptr<FrameResource>> mFrameResources;
     FrameResource* mCurrFrameResource = nullptr;
     int mCurrFrameResourceIndex = 0;
@@ -89,6 +91,7 @@ private:
     UINT m_drawCount = 0;
 
     std::unordered_map<uint32_t, std::unique_ptr<MeshGeometry>> m_geometries;
+    std::unordered_map<std::string, std::unique_ptr<Material>> mMaterials;
 
     struct PendingUpload { MeshGeometry* geo; UINT64 fence; };
     std::vector<MeshGeometry*> m_newGeometries;

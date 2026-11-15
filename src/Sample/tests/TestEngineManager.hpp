@@ -32,7 +32,7 @@ public:
         
         EntityId e2 = world.CreateEntity();
         MeshRenderer& rendererE2 = world.AddComponent<MeshRenderer>(e2);
-        rendererE2.geoId = ResourceManager::GetGeometryId("Cube");
+        rendererE2.geoId = ResourceManager::GetGeometryId("Grid");
         rendererE2.color = { 0.4f, 0.4f, 0.4f, 1.0f };
         rendererE2.shaderId = ResourceManager::GetShaderId("Toon"); 
         // rendererE2.materialId = RessourceManager::GetMaterialId("Red");

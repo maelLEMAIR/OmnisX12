@@ -732,6 +732,59 @@ public:
     }
 	
 	////////////////////////////////////////////
+	//// GRID
+	////////////////////////////////////////////
+	static Geometry* BuildGrid(uint32 _cellsX, uint32 _cellsZ, float _width = 1.0f, float _depth = 1.0f, bool _isDynamic = false)
+    {
+    	_cellsX = (std::max)(_cellsX, 1u);
+    	_cellsZ = (std::max)(_cellsZ, 1u);
+
+    	Vector<Vertex> vertices;
+    	Vector<uint32> indices;
+    	vertices.reserve((_cellsX + 1) * (_cellsZ + 1));
+    	indices.reserve(_cellsX * _cellsZ * 6);
+
+    	for (uint32 row = 0; row <= _cellsZ; ++row)
+    	{
+    		float v = (float)row / (float)_cellsZ;
+    		float z = (v - 0.5f) * _depth;
+
+    		for (uint32 col = 0; col <= _cellsX; ++col)
+    		{
+    			float u = (float)col / (float)_cellsX;
+    			float x = (u - 0.5f) * _width;
+
+    			vertices.push_back(Vertex{
+					XMFLOAT3(x, 0.0f, z),
+					XMFLOAT2(u, v),
+					XMFLOAT3(0.0f, 1.0f, 0.0f),   
+					XMFLOAT3(1.0f, 0.0f, 0.0f),   
+					XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f) });
+    		}
+    	}
+
+    	const uint32 stride = _cellsX + 1;
+    	for (uint32 row = 0; row < _cellsZ; ++row)
+    	{
+    		for (uint32 col = 0; col < _cellsX; ++col)
+    		{
+    			uint32 v00 = row * stride + col;  
+    			uint32 v01 = v00 + 1;              
+    			uint32 v10 = v00 + stride;         
+    			uint32 v11 = v10 + 1;              
+
+    			indices.push_back(v00); indices.push_back(v10); indices.push_back(v01);
+    			indices.push_back(v11); indices.push_back(v01); indices.push_back(v10);
+    		}
+    	}
+
+    	Geometry* pGeometry = new Geometry();
+    	pGeometry->indices  = indices;
+    	pGeometry->vertices = vertices;
+    	return pGeometry;
+    }
+	
+	////////////////////////////////////////////
 	//// GeometryCustom
 	////////////////////////////////////////////
 

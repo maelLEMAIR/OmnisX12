@@ -65,6 +65,7 @@ void EngineManager::Initialize(UINT _width, UINT _height, std::wstring _title, b
 
     ResourceManager::AddGeometry("Cube", GeometryFactory::BuildCube());
     ResourceManager::AddGeometry("Sphere", GeometryFactory::BuildUVSphere(18, 18));
+    ResourceManager::AddGeometry("Grid", GeometryFactory::BuildGrid(20, 20));
     
     uint32 flatShader = m_pRenderer->CreateShader("Flat", RES("Shaders/flat.hlsl"));
     ResourceManager::AddShader("Flat", flatShader);

@@ -29,6 +29,15 @@ struct PassConstants
     float DeltaTime = 0.0f;
 };
 
+struct MaterialConstants
+{
+    DirectX::XMFLOAT4 DiffuseAlbedo = { 1.0f, 1.0f, 1.0f, 1.0f };
+    DirectX::XMFLOAT3 FresnelR0 = { 0.01f, 0.01f, 0.01f };
+    float Roughness = 0.25f;
+    
+    DirectX::XMFLOAT4X4 MatTransform = MathUtils::Identity4x4();
+};
+
 struct FrameResource
 {
 public:
@@ -41,6 +50,7 @@ public:
     
     std::unique_ptr<UploadBuffer<PassConstants>> PassCB = nullptr;
     std::unique_ptr<UploadBuffer<ObjectConstants>> ObjectCB = nullptr;
+    std::unique_ptr<UploadBuffer<MaterialConstants>> MaterialCB = nullptr;
     
     UINT64 Fence = 0;
 };

@@ -109,7 +109,8 @@ void Renderer::OnResize(int width, int height)
     depthDesc.DepthOrArraySize = 1;
     depthDesc.MipLevels = 1;
     depthDesc.Format = DXGI_FORMAT_R24G8_TYPELESS;
-    depthDesc.SampleDesc.Count = 1;
+    depthDesc.SampleDesc.Count      = m_swapChain.MsaaState() ? 4 : 1;
+    depthDesc.SampleDesc.Quality    = m_swapChain.MsaaState() ? (m_swapChain.GetMsaaQuality() - 1) : 0;
     depthDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
     depthDesc.Flags  = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
 
@@ -192,6 +193,24 @@ void Renderer::UpdateMainPassCB(Chrono const& chrono)
     currPassCB->CopyData(0, mMainPassCB);
 }
 
+void Renderer::UpdateMaterialCBs(const Chrono& gt)
+{
+    auto currMaterialCB = mCurrFrameResource->MaterialCB.get();
+    for(auto& e : mMaterials)
+    {
+        Material* mat = e.second.get();
+        if(mat->NumFramesDirty > 0)
+        {
+            XMMATRIX matTransform = XMLoadFloat4x4(&mat->MatTransform);
+            MaterialConstants matConstants;
+            matConstants.DiffuseAlbedo = mat->DiffuseAlbedo;
+            matConstants.FresnelR0 = mat->FresnelR0;
+            matConstants.Roughness = mat->Roughness;
+            currMaterialCB->CopyData(mat->MatCBIndex, matConstants);
+            mat->NumFramesDirty--;
+        }
+    }
+}
 void Renderer::Draw(MeshGeometry& geo, const XMFLOAT4X4& world, const XMFLOAT4& color, uint32 shaderId)
 {
     if (m_drawCount >= kMaxObjects) return;
@@ -202,6 +221,9 @@ void Renderer::Draw(MeshGeometry& geo, const XMFLOAT4X4& world, const XMFLOAT4& 
     constants.Color = color;
     mCurrFrameResource->ObjectCB->CopyData(m_drawCount, constants);
 
+    MaterialConstants matConstants;
+    mCurrFrameResource->MaterialCB->CopyData(m_drawCount, matConstants);
+    
     ID3D12GraphicsCommandList* cmd = m_commandQueue.GetCommandList();
 
     if (shaderId != m_boundShader)
@@ -219,7 +241,9 @@ void Renderer::Draw(MeshGeometry& geo, const XMFLOAT4X4& world, const XMFLOAT4& 
     const UINT stride = d3dUtil::CalcConstantBufferByteSize(sizeof(ObjectConstants));
     cmd->SetGraphicsRootConstantBufferView(0,
         mCurrFrameResource->ObjectCB->Resource()->GetGPUVirtualAddress() + (UINT64)m_drawCount * stride);
-
+    cmd->SetGraphicsRootConstantBufferView(1, 
+        mCurrFrameResource->MaterialCB->Resource()->GetGPUVirtualAddress() + (UINT64)m_drawCount * stride);
+    
     cmd->DrawIndexedInstanced(geo.IndexCount, 1, 0, 0, 0);
     ++m_drawCount;
 }
@@ -299,14 +323,20 @@ uint32 Renderer::CreateShader(const std::string& name, const std::wstring& hlslP
     psoDesc.pRootSignature        = m_rootSignature.Get();
     psoDesc.VS                    = { s.vs->GetBufferPointer(), s.vs->GetBufferSize() };
     psoDesc.PS                    = { s.ps->GetBufferPointer(), s.ps->GetBufferSize() };
-    psoDesc.RasterizerState       = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+    
+    CD3DX12_RASTERIZER_DESC rsDesc(D3D12_DEFAULT);
+    // rsDesc.FillMode = D3D12_FILL_MODE_WIREFRAME;
+    // rsDesc.CullMode = D3D12_CULL_MODE_NONE;
+    
+    psoDesc.RasterizerState       = rsDesc;
     psoDesc.BlendState            = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
     psoDesc.DepthStencilState     = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
     psoDesc.SampleMask            = UINT_MAX;
     psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
     psoDesc.NumRenderTargets      = 1;
     psoDesc.RTVFormats[0]         = m_swapChain.Format();
-    psoDesc.SampleDesc.Count      = 1;
+    psoDesc.SampleDesc.Count      = m_swapChain.MsaaState() ? 4 : 1;
+    psoDesc.SampleDesc.Quality    = m_swapChain.MsaaState() ? (m_swapChain.GetMsaaQuality() - 1) : 0;
     psoDesc.DSVFormat             = m_depthStencilFormat;
 
     ThrowIfFailed(m_device.GetGpuDevice()->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&s.pso)));
