@@ -4,6 +4,10 @@
 #include "Renderer.h"
 #include "Core/define.h"
 
+Renderer::Renderer() : m_mainCamera(XMFLOAT3(0.0f, 0.0f, 3.0f))
+{
+}
+
 Renderer::~Renderer()
 {
     if (m_commandQueue.GetQueue())
@@ -32,8 +36,8 @@ void Renderer::Init(HWND hwnd, int width, int height)
     
     BuildRootSignature();
     BuildFrameResources(); 
-    BuildShadersAndInputLayout();             
-    BuildPSO();
+    BuildShadersAndInputLayout();
+    CreateShader("Default", GetResPath() + L"Shaders/color.hlsl");
 
     m_commandQueue.ExecuteList();
     m_commandQueue.FlushCommandQueue();
@@ -136,9 +140,7 @@ void Renderer::OnResize(int width, int height)
     m_screenViewport = { 0.0f, 0.0f, (float)width, (float)height, 0.0f, 1.0f };
     m_scissorRect    = { 0, 0, width, height };
 
-    XMMATRIX P = XMMatrixPerspectiveFovLH(0.25f * MathUtils::PI,
-        (float)width / (float)height, 1.0f, 1000.0f);
-    XMStoreFloat4x4(&mProj, P);
+    mProj = m_mainCamera.GetProjMatrix();
 }
 
 void Renderer::Update(Chrono const& chrono)
@@ -149,25 +151,19 @@ void Renderer::Update(Chrono const& chrono)
     if (mCurrFrameResource->Fence != 0)
         m_commandQueue.WaitForFenceValue(mCurrFrameResource->Fence);
     
-    mEyePos = XMFLOAT3(0.0f, 3.0f, -10.0f);
-    XMVECTOR pos    = XMLoadFloat3(&mEyePos);
-    XMVECTOR target = XMVectorZero();
-    XMVECTOR up     = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
-    XMStoreFloat4x4(&mView, XMMatrixLookAtLH(pos, target, up));
-
-    UpdateObjectCBs(chrono);
+    
+    m_mainCamera.UpdateViewMatrix();
+    
+    mEyePos = m_mainCamera.GetPosition();
+    mView = m_mainCamera.GetViewMatrix();
+    
     UpdateMainPassCB(chrono);
-}
-
-void Renderer::UpdateObjectCBs(Chrono const& chrono)
-{
-    auto currObjectCB = mCurrFrameResource->ObjectCB.get();
 }
 
 void Renderer::UpdateMainPassCB(Chrono const& chrono)
 {
-    XMMATRIX view = XMLoadFloat4x4(&mView);
-    XMMATRIX proj = XMLoadFloat4x4(&mProj);
+    XMMATRIX view = mView;
+    XMMATRIX proj = mProj;
     
     XMMATRIX viewProj = XMMatrixMultiply(view, proj);
     XMVECTOR viewDet = XMMatrixDeterminant(view);
@@ -196,10 +192,10 @@ void Renderer::UpdateMainPassCB(Chrono const& chrono)
     currPassCB->CopyData(0, mMainPassCB);
 }
 
-void Renderer::Draw(MeshGeometry& geo, const XMFLOAT4X4& world, const XMFLOAT4& color)
+void Renderer::Draw(MeshGeometry& geo, const XMFLOAT4X4& world, const XMFLOAT4& color, uint32 shaderId)
 {
-    if (m_drawCount >= kMaxObjects)
-        return;
+    if (m_drawCount >= kMaxObjects) return;
+    if (shaderId >= m_shaders.size()) shaderId = 0;
 
     ObjectConstants constants;
     XMStoreFloat4x4(&constants.World, XMMatrixTranspose(XMLoadFloat4x4(&world)));
@@ -208,6 +204,12 @@ void Renderer::Draw(MeshGeometry& geo, const XMFLOAT4X4& world, const XMFLOAT4& 
 
     ID3D12GraphicsCommandList* cmd = m_commandQueue.GetCommandList();
 
+    if (shaderId != m_boundShader)
+    {
+        cmd->SetPipelineState(m_shaders[shaderId].pso.Get());
+        m_boundShader = shaderId;
+    }
+    
     D3D12_VERTEX_BUFFER_VIEW vbv = geo.VertexBufferView();
     D3D12_INDEX_BUFFER_VIEW  ibv = geo.IndexBufferView();
     cmd->IASetVertexBuffers(0, 1, &vbv);
@@ -277,15 +279,26 @@ void Renderer::EndDraw()
     for (MeshGeometry* g : m_newGeometries)
         m_pendingUploads.push_back({ g, mCurrFrameResource->Fence });
     m_newGeometries.clear();
+    
+    m_boundShader = -1;
 }
 
-void Renderer::BuildPSO()
+
+uint32 Renderer::CreateShader(const std::string& name, const std::wstring& hlslPath)
 {
+    auto it = m_shaderIds.find(name);
+    if (it != m_shaderIds.end())
+        return it->second;
+
+    Shader s;
+    s.vs = d3dUtil::CompileShader(hlslPath, nullptr, "VS", "vs_5_0");
+    s.ps = d3dUtil::CompileShader(hlslPath, nullptr, "PS", "ps_5_0");
+
     D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
-    psoDesc.InputLayout    = { mInputLayout.data(), (UINT)mInputLayout.size() };
-    psoDesc.pRootSignature = m_rootSignature.Get();
-    psoDesc.VS = { reinterpret_cast<BYTE*>(m_vsByteCode->GetBufferPointer()), m_vsByteCode->GetBufferSize() };
-    psoDesc.PS = { reinterpret_cast<BYTE*>(m_psByteCode->GetBufferPointer()), m_psByteCode->GetBufferSize() };
+    psoDesc.InputLayout           = { mInputLayout.data(), (UINT)mInputLayout.size() };
+    psoDesc.pRootSignature        = m_rootSignature.Get();
+    psoDesc.VS                    = { s.vs->GetBufferPointer(), s.vs->GetBufferSize() };
+    psoDesc.PS                    = { s.ps->GetBufferPointer(), s.ps->GetBufferSize() };
     psoDesc.RasterizerState       = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
     psoDesc.BlendState            = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
     psoDesc.DepthStencilState     = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
@@ -294,10 +307,24 @@ void Renderer::BuildPSO()
     psoDesc.NumRenderTargets      = 1;
     psoDesc.RTVFormats[0]         = m_swapChain.Format();
     psoDesc.SampleDesc.Count      = 1;
-    psoDesc.SampleDesc.Quality    = 0;
     psoDesc.DSVFormat             = m_depthStencilFormat;
 
-    ThrowIfFailed(m_device.GetGpuDevice()->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&mPSOs["opaque"])));
+    ThrowIfFailed(m_device.GetGpuDevice()->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&s.pso)));
+
+    m_shaders.push_back(std::move(s));
+    uint32 id = (uint32)m_shaders.size() - 1;
+    m_shaderIds[name] = id;
+    return id;
+}
+
+void Renderer::SetMainCamera(Camera* cam)
+{
+    if (cam == nullptr)
+        return;
+
+    m_mainCamera = *cam;
+    m_mainCamera.UpdateViewMatrix();
+    mProj = m_mainCamera.GetProjMatrix();
 }
 
 D3D12_CPU_DESCRIPTOR_HANDLE Renderer::DepthStencilView() const

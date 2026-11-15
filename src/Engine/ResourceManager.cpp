@@ -30,6 +30,14 @@ Geometry* ResourceManager::GetGeometry(String _name)
     return s_pInstance->m_vGeometries[s_pInstance->m_mGeometryIds[_name]];
 }
 
+uint32 ResourceManager::AddShader(String const& _name, uint32& _pShader)
+{
+    assert(s_pInstance->m_mShaderIds.contains(_name) == false && "Shader already exists");
+    
+    s_pInstance->m_mShaderIds[_name] = _pShader;
+    return _pShader;
+}
+
 uint32 ResourceManager::AddCamera(String _name)
 {
     assert(s_pInstance->m_mCameraIds.contains(_name) == false && "Camera already exists");

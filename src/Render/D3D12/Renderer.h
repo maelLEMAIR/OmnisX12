@@ -24,12 +24,19 @@ static const BoxDesc kBoxDescs[] =
     { { 3.5f, 0.f, 0.f},  {1.f, 1.f,  1.f},  0.f,         {0.2f, 0.4f, 1.f,  1.f} },
 };
 
+struct Shader
+{
+    ComPtr<ID3DBlob>            vs;
+    ComPtr<ID3DBlob>            ps;
+    ComPtr<ID3D12PipelineState> pso;
+};
+
 static const int kNumBoxes = (int)std::size(kBoxDescs);
 
 class Renderer
 {
 public:
-    Renderer() = default;
+    Renderer();
     ~Renderer();
 
     void Init(HWND hwnd, int width, int height);
@@ -39,32 +46,36 @@ public:
     
     void BeginDraw();
     MeshGeometry* GetOrCreateGeometry(uint32_t geoId, Geometry& geo);
-    void Draw(MeshGeometry& geo, const XMFLOAT4X4& world, const XMFLOAT4& color);
+    uint32 CreateShader(const std::string& name, const std::wstring& hlslPath);
+    uint32 GetShaderId(const std::string& name) const { return m_shaderIds.at(name); }
+    void Draw(MeshGeometry& geo, const XMFLOAT4X4& world, const XMFLOAT4& color, uint32 shaderId = 0);
     void EndDraw();
     
     GpuDevice& GetGpuDevice() { return m_device; }
     void SetClearColor(XMFLOAT3 clearColor) { m_clearColor = { { { clearColor.x, clearColor.y, clearColor.z, 1.0f } } }; }
-    void SetMainCamera(Camera* cam) { m_mainCamera = *cam; }
+    void SetMainCamera(Camera* cam);
 
 private:
     D3D12_CPU_DESCRIPTOR_HANDLE DepthStencilView() const;
 
 private:
-    void UpdateObjectCBs(Chrono const& chrono);
     void UpdateMainPassCB(Chrono const& chrono);
     
     void BuildRootSignature();
     void BuildFrameResources();
     void BuildShadersAndInputLayout();
-    void BuildPSO();
-
+    
     XMVECTORF32 m_clearColor = Colors::BlueViolet;
+    
+    std::vector<Shader>                   m_shaders;
+    std::unordered_map<std::string, uint32> m_shaderIds;
+    uint32                                m_boundShader = 0;
     
     ComPtr<ID3D12RootSignature>  m_rootSignature = nullptr;
     
     ComPtr<ID3DBlob> m_vsByteCode = nullptr;
     ComPtr<ID3DBlob> m_psByteCode = nullptr;
-
+    
     GpuDevice    m_device;
     CommandQueue m_commandQueue;
     SwapChain    m_swapChain;
@@ -83,7 +94,6 @@ private:
     std::vector<MeshGeometry*> m_newGeometries;
     std::vector<PendingUpload> m_pendingUploads;
     
-    
     PassConstants mMainPassCB;
     XMFLOAT3 mEyePos = XMFLOAT3(0.0f, 0.0f, 0.0f);
     
@@ -101,8 +111,8 @@ private:
 
     Camera m_mainCamera;
     
-    DirectX::XMFLOAT4X4 mView  = MathUtils::Identity4x4();
-    DirectX::XMFLOAT4X4 mProj  = MathUtils::Identity4x4();
+    XMMATRIX mView  = XMMatrixIdentity();
+    XMMATRIX mProj  = XMMatrixIdentity();
 };
 
 #endif

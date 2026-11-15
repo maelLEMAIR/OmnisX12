@@ -28,6 +28,7 @@ public:
     
     void Initialize(UINT _width, UINT _height, std::wstring _title, bool _fullscreen, int argc = 0, char* argv[] = nullptr);
     void Run();
+    void UpdateFpsInTitle(float dt);
     void Exit();
 	
     static float GetDeltaTime()     { return GetInstance().m_deltaTime; }
@@ -42,6 +43,8 @@ private:
     Chrono m_networkChrono;
     
     float m_deltaTime = 0.0f;
+    float m_fpsTime = 0.0f;
+    int m_fpsFrames = 0;
     
     Camera* m_camera = nullptr;
     

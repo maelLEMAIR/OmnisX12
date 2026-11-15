@@ -1,0 +1,61 @@
+// toon.hlsl : éclairage directionnel découpé en 3 paliers (cel shading)
+
+cbuffer cbPerObject : register(b0)
+{
+    float4x4 gWorld;
+    float4   gColor;
+};
+
+cbuffer cbPass : register(b1)
+{
+    float4x4 gView;
+    float4x4 gInvView;
+    float4x4 gProj;
+    float4x4 gInvProj;
+    float4x4 gViewProj;
+    float4x4 gInvViewProj;
+    float3   gEyePosW;
+    float    cbPad1;
+    float2   gRenderTargetSize;
+    float2   gInvRenderTargetSize;
+    float    gNearZ;
+    float    gFarZ;
+    float    gTotalTime;
+    float    gDeltaTime;
+};
+
+struct VertexIn
+{
+    float3 PosL     : POSITION;
+    float2 Uv       : TEXCOORD;
+    float3 NormalL  : NORMAL;
+    float3 TangentL : TANGENT;
+    float4 Color    : COLOR;
+};
+
+struct VertexOut
+{
+    float4 PosH    : SV_POSITION;
+    float3 NormalW : NORMAL;
+};
+
+VertexOut VS(VertexIn vin)
+{
+    VertexOut vout;
+    float4 posW   = mul(float4(vin.PosL, 1.0f), gWorld);
+    vout.PosH     = mul(posW, gViewProj);
+    vout.NormalW  = mul(vin.NormalL, (float3x3)gWorld); // ok tant que le scale reste uniforme
+    return vout;
+}
+
+float4 PS(VertexOut pin) : SV_Target
+{
+    float3 N        = normalize(pin.NormalW);
+    float3 lightDir = normalize(float3(0.5f, -1.0f, 0.3f)); // sens de propagation de la lumière
+    float  ndl      = saturate(dot(N, -lightDir));
+
+    float  band     = ceil(ndl * 3.0f) / 3.0f;              // 0, 1/3, 2/3, 1
+    float  light    = 0.25f + 0.75f * band;                 // 0.25 = lumière ambiante
+
+    return float4(gColor.rgb * light, gColor.a);
+}

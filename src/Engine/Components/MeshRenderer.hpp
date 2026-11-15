@@ -6,9 +6,10 @@
 
 struct MeshRenderer
 {
-    uint32   geoId = 0;
-    uint32   materialId = 0;
-    XMFLOAT4 color = { 1.0f, 1.0f, 1.0f, 1.0f };
+    uint32   geoId          = 0;
+    uint32   materialId     = 0;
+    uint32   shaderId       = 0;
+    XMFLOAT4 color          = { 1.0f, 1.0f, 1.0f, 1.0f };
 };
 
 #endif

@@ -18,6 +18,9 @@ public:
 	static Geometry* GetGeometry(String _name);
 	static Geometry* GetGeometry(uint32 _id) { return s_pInstance->m_vGeometries[_id]; }
 
+	static uint32 AddShader(String const& _name, uint32& _pShader);
+	static uint32 GetShaderId(String _name) { return s_pInstance->m_mShaderIds[_name]; }
+
 	static uint32 AddCamera(String _name);
 	static uint32 GetCameraId(String _name) { return s_pInstance->m_mCameraIds[_name]; };
 	static Camera* GetCamera(String _name);
@@ -30,6 +33,7 @@ private:
 	Vector<Camera*> m_vCameras;
 	
 	UnorderedMap<String, uint32> m_mGeometryIds;
+	UnorderedMap<String, uint32> m_mShaderIds;
 	UnorderedMap<String, uint32> m_mCameraIds;
 };
 

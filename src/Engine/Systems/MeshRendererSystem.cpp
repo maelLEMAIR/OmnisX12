@@ -21,7 +21,7 @@ void MeshRendererSystem::Update(World& world, float deltaTime)
         MeshGeometry* gpuGeo = renderer->GetOrCreateGeometry(mesh.geoId, *geo);
         if (gpuGeo == nullptr) return;
 
-        renderer->Draw(*gpuGeo, transform.world.GetMatrix(), mesh.color);
+        renderer->Draw(*gpuGeo, transform.world.GetMatrix(), mesh.color, mesh.shaderId);
     });
 }
 

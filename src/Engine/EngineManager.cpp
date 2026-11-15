@@ -66,18 +66,14 @@ void EngineManager::Initialize(UINT _width, UINT _height, std::wstring _title, b
     ResourceManager::AddGeometry("Cube", GeometryFactory::BuildCube());
     ResourceManager::AddGeometry("Sphere", GeometryFactory::BuildUVSphere(18, 18));
     
-    // Shader* coloredS = ShaderFactory::CreateLitColored(m_pDevice);
-    // RessourceManager::AddShader("Color", coloredS);
-    //
-    // Material* white = coloredS->CreateMaterial();
-    // white->SetFloat4("DiffuseAlbedo", {1.0f, 1.0f, 1.0f, 1.0f});
-    // RessourceManager::AddMaterial("Default", white);
-    //
-    // Material* red = coloredS->CreateMaterial();
-    // red->SetFloat4("DiffuseAlbedo", {1.0f, 0.0f, 0.0f, 1.0f});
-    // RessourceManager::AddMaterial("Red", red);
-    //
-    // RessourceManager::AddCamera("Default");
+    uint32 flatShader = m_pRenderer->CreateShader("Flat", RES("Shaders/flat.hlsl"));
+    ResourceManager::AddShader("Flat", flatShader);
+    uint32 toonShader = m_pRenderer->CreateShader("Toon", RES("Shaders/toon.hlsl"));
+    ResourceManager::AddShader("Toon", toonShader);
+    
+    uint32 camId = ResourceManager::AddCamera("Default");
+    Camera* cam  = ResourceManager::GetCamera(camId);
+    cam->SetPerspective(0.25f * XM_PI, (float)_width / (float)_height, 1.0f, 1000.0f);
     InputManager::Initialize(m_pWindow->Handle());
 }
 
@@ -97,6 +93,19 @@ void EngineManager::Run()
         m_pRenderer->Update(m_chrono);
         InputManager::Update(m_deltaTime);
         m_pSceneManager->GetCurrentScene()->Update(m_deltaTime);
+        UpdateFpsInTitle(m_deltaTime);
+    }
+}
+
+void EngineManager::UpdateFpsInTitle(float dt)
+{
+    m_fpsTime += dt;
+    ++m_fpsFrames;
+    if (m_fpsTime >= 1.0f)
+    {
+        m_pWindow->SetTitle(L"OmnisX12 - " + std::to_wstring(m_fpsFrames) + L" FPS");
+        m_fpsTime   = 0.0f;
+        m_fpsFrames = 0;
     }
 }
 
